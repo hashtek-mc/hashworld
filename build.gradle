@@ -1,0 +1,78 @@
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group = 'fr.hashtek.spigot'
+version = 'D0.0.1-SNAPSHOT' // R : Release | D : Dev
+
+repositories {
+    mavenCentral()
+    maven {
+        name = "papermc"
+        url = "https://repo.papermc.io/repository/maven-public/"
+    }
+    maven {
+        name = "sonatype"
+        url = "https://oss.sonatype.org/content/groups/public/"
+    }
+}
+
+configurations {
+    implementation.canBeResolved = true
+}
+
+dependencies {
+    compileOnly 'org.github.paperspigot:paperspigot-api:1.8.8-R0.1-SNAPSHOT'
+
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+def targetJavaVersion = 8
+java {
+    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
+    sourceCompatibility = javaVersion
+    targetCompatibility = javaVersion
+    if (JavaVersion.current() < javaVersion) {
+        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+
+    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
+        options.release.set(targetJavaVersion)
+    }
+}
+
+processResources {
+    def props = [
+        name: rootProject.name,
+        version: version
+    ]
+    inputs.properties props
+    filteringCharset 'UTF-8'
+    filesMatching('plugin.yml') {
+        expand props
+    }
+}
+
+shadowJar {
+    exclude '**/Tekore-*.jar' // Tekore ne sera pas export.
+
+    dependencies {
+        exclude(dependency('org.github.paperspigot:paperspigot-api:1.8.8-R0.1-SNAPSHOT'))
+    }
+
+    mergeServiceFiles()
+    minimize()
+}
+
+tasks.register('make', Copy) {
+    from ('build/libs/')
+    into '/home/l1x/Epitech/Hub/Minecraft/HashTek/builds'
+    include '*.jar'
+}
+
+tasks.make.dependsOn shadowJar
