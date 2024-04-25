@@ -1,0 +1,6 @@
+worlds:
+  template:
+    name: "template"
+  clones:
+    format-name: "clone-%id%" # %id% => the id of the world
+    amount: 5
