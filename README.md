@@ -47,7 +47,7 @@ worlds:
 `clones.format-name`: Le format d'affichage des clones.
 `clones.amount`: Le nombre de clones à charger.
 
-> [!info]
+> [!information]
 > `clones.format-name`:
 > La variable `%id%` correspond à l'identifiant du clone.
 > Si cette variable n'est pas indiquée, alors le format sera `<format-name>-%id%`
