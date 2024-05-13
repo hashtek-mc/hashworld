@@ -3,7 +3,7 @@ package fr.hashtek.spigot.hashworld;
 import fr.hashtek.hashconfig.HashConfig;
 import fr.hashtek.hashlogger.HashLoggable;
 import fr.hashtek.hashlogger.HashLogger;
-import fr.hashtek.spigot.hashworld.loader.WorldLoader;
+import fr.hashtek.spigot.hashworld.manager.WorldManager;
 import fr.hashtek.tekore.bukkit.Tekore;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
@@ -20,7 +20,6 @@ public class HashWorld extends JavaPlugin implements HashLoggable
 {
 
     private static HashWorld instance = null;
-    private Tekore core = null;
     private HashLogger logger = null;
     private World[] clones = null;
     private int clonesAmount = 0;
@@ -30,16 +29,17 @@ public class HashWorld extends JavaPlugin implements HashLoggable
     public void onEnable()
     {
         instance = this;
+        Tekore core = null;
 
         try {
-            this.core = Tekore.getInstance();
+            core = Tekore.getInstance();
         } catch (NullPointerException exception) {
             System.err.println("Tekore failed to load. Stopping.");
             this.getServer().shutdown();
             return;
         }
 
-        this.logger = this.core.getHashLogger();
+        this.logger = core.getHashLogger();
 
         try {
             logger.debug(this, "Loading the configuration file.");
@@ -99,7 +99,7 @@ public class HashWorld extends JavaPlugin implements HashLoggable
     public void reloadClone(int id)
     {
         if (this.clones != null && id < clonesAmount)
-            this.clones[id] = WorldLoader.reloadWorld(this.clones[id].getName(), false);
+            this.clones[id] = WorldManager.reloadWorld(this.clones[id].getName(), false);
     }
 
     /**
@@ -122,12 +122,8 @@ public class HashWorld extends JavaPlugin implements HashLoggable
         World templateWorld = null;
         String formatName = yaml.getString("worlds.clones.format-name");
         String cloneName = null;
-        World clonedWorld = null;
 
-        if (templateName.startsWith("/"))
-            templateWorld = Bukkit.createWorld(new WorldCreator(templateName));
-        else
-            templateWorld = Bukkit.createWorld(new WorldCreator(Bukkit.getWorldContainer().getAbsolutePath() + "/" + templateName));
+        templateWorld = Bukkit.createWorld(new WorldCreator(templateName));
 
         if (templateWorld == null) {
             this.logger.fatal(this, "Cannot found the template named \"" + templateName + "\". Does the world folder exists ?");
@@ -142,17 +138,13 @@ public class HashWorld extends JavaPlugin implements HashLoggable
         for (int i = 0; i < this.clonesAmount; i++) {
             cloneName = formatName.replace("%id%", String.valueOf(i));
             this.logger.debug(this, "Cloning \"" + templateName + "\" to \"" + cloneName + "\".");
-            try {
-                clonedWorld = WorldLoader.cloneWorld(templateWorld, cloneName);
-            } catch (IOException e) {
-                this.logger.error(this, "Impossible to clone the world \"" + cloneName + "\".", e);
-            }
-            if (clonedWorld == null)
-                logger.error(this, "Impossible to clone the world \"" + cloneName + "\". The reason is unknown. (WTF ?)");
-            this.clones[i] = clonedWorld;
+            this.clones[i] = WorldManager.duplicateAndLoadWorld(templateWorld.getName(), cloneName);
         }
     }
 
+    /**
+     * Unload the cloned worlds.
+     */
     private void unloadClones()
     {
         boolean status = false;
@@ -164,17 +156,30 @@ public class HashWorld extends JavaPlugin implements HashLoggable
                 this.logger.warning(this, "Cannot unload world with id \"" + i + "\" because the World is \"null\".");
             else {
                 this.logger.debug(this, "Unloading world \"" + this.clones[i].getName() + "\".");
-                status = WorldLoader.unloadWorld(this.clones[i].getName(), false);
+                status = WorldManager.unloadWorld(this.clones[i].getName(), false);
                 if (!status)
                     this.logger.warning(this, "Cannot unload \"" + this.clones[i].getName() + "\".");
             }
         }
     }
 
+    /**
+     * Reload the cloned worlds.
+     */
     private void reloadClones()
     {
         this.unloadClones();
         this.loadClones();
+    }
+
+    /**
+     * Get the {@link HashLogger} instance.
+     *
+     * @return The {@link HashLogger} instance.
+     */
+    public HashLogger getHashLogger()
+    {
+        return this.logger;
     }
 
 }
